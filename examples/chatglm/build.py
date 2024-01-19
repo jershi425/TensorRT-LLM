@@ -92,7 +92,7 @@ def parse_arguments(args):
         choices=[
             'chatglm_6b', 'chatglm2_6b', 'chatglm2_6b_32k', 'chatglm3_6b',
             'chatglm3_6b_base', 'chatglm3_6b_32k', 'glm_2b', 'glm_10b',
-            'glm_10b_chinese'
+            'glm_10b_chinese', "codegeex_32b", "chatglm3_130b"
         ],
         help='Name of model, use "_" rather than "-" to connect the parts',
     )
@@ -437,8 +437,15 @@ def parse_arguments(args):
         "Either model name or model directory must be provided"
     if args.model_dir is None:
         args.model_dir = Path(args.model_name)
-    with open(args.model_dir / "config.json", "r") as f:
-        js = json.loads(f.read())
+    if args.model_name == "chatglm3_130b":
+        with open("./chatglm3_130b_config.json", "r") as f:
+            js = json.loads(f.read())
+    elif args.model_name == "codegeex_32b":
+        with open("./codegeex_32b_config.json", "r") as f:
+            js = json.loads(f.read())
+    else:
+        with open(args.model_dir / "config.json", "r") as f:
+            js = json.loads(f.read())
     if args.model_name is None:
         args.model_name = js["_name_or_path"].split("/")[-1].replace("-", "_")
     if args.output_dir is None:
@@ -483,6 +490,8 @@ def parse_arguments(args):
             "chatglm3_6b",
             "chatglm3_6b_base",
             "chatglm3_6b_32k",
+            "chatglm3_130b",
+            "codegeex_32b",
     ]:
         args.apply_query_key_layer_scaling = False
         args.apply_residual_connection_post_layernorm = js[
@@ -687,30 +696,31 @@ def build_rank_engine(
         **quantize_kwargs,
     )
 
-    if args.per_group:  # load from AWQ weights
-        load_func = load_from_awq if args.weight_only_precision == 'int4_awq' else load_from_gptq
-        load_func(
-            trtllm_model,
-            args.quant_ckpt_path,
-            mapping=args.mapping,
-            dtype=args.dtype,
-            model_name=args.model_name,
-        )
-    elif args.use_smooth_quant:
-        load_from_sq(
-            trtllm_model,
-            args.model_dir,
-            mapping=args.mapping,
-            model_name=args.model_name,
-        )
-    else:  # load from original model
-        load_from_hf(
-            trtllm_model,
-            args.model_dir,
-            mapping=args.mapping,
-            dtype=args.dtype,
-            model_name=args.model_name,
-        )
+    if args.model_name != "chatglm3_130b" or args.model_name != "codegeex_32b":
+        if args.per_group:  # load from AWQ weights
+            load_func = load_from_awq if args.weight_only_precision == 'int4_awq' else load_from_gptq
+            load_func(
+                trtllm_model,
+                args.quant_ckpt_path,
+                mapping=args.mapping,
+                dtype=args.dtype,
+                model_name=args.model_name,
+            )
+        elif args.use_smooth_quant:
+            load_from_sq(
+                trtllm_model,
+                args.model_dir,
+                mapping=args.mapping,
+                model_name=args.model_name,
+            )
+        else:  # load from original model
+            load_from_hf(
+                trtllm_model,
+                args.model_dir,
+                mapping=args.mapping,
+                dtype=args.dtype,
+                model_name=args.model_name,
+            )
 
     profiler.print_memory_usage(f'Rank {rank} model weight loaded.')
 

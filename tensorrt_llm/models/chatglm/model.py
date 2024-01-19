@@ -119,6 +119,55 @@ class ChatGLMParams:
     )
     default_config["chatglm3_6b"] = default_config["chatglm2_6b"]
     default_config["chatglm3_6b_base"] = default_config["chatglm2_6b"]
+    default_config["chatglm3_130b"] = SimpleNamespace(
+        apply_query_key_layer_scaling=False,
+        apply_residual_connection_post_layernorm=False,
+        dtype="float16",
+        ffn_hidden_size=34560,
+        hidden_act='swiglu',
+        hidden_size=10240,
+        linear_bias=False,
+        logits_dtype="float16",
+        mapping=Mapping(),
+        max_input_len=1024,
+        max_output_len=1024,
+        max_seq_length=32768,
+        norm_epsilon=1.0e-5,
+        num_heads=80,
+        num_kv_heads=8,
+        num_layers=96,
+        qkv_bias=True,
+        quant_mode=QuantMode(0),
+        rmsnorm=True,
+        rotary_embedding_scaling=1.0,
+        use_cache=True,
+        vocab_size=128000,
+    )
+    default_config["codegeex_32b"] = SimpleNamespace(
+        apply_query_key_layer_scaling=False,
+        apply_residual_connection_post_layernorm=False,
+        dtype="float16",
+        ffn_hidden_size=22272,
+        hidden_act='swiglu',
+        hidden_size=6656,
+        linear_bias=False,
+        logits_dtype="float16",
+        mapping=Mapping(),
+        max_input_len=1024,
+        max_output_len=1024,
+        max_seq_length=32768,
+        norm_epsilon=1.0e-5,
+        num_heads=52,
+        num_kv_heads=4,
+        num_layers=58,
+        qkv_bias=True,
+        quant_mode=QuantMode(0),
+        rmsnorm=True,
+        rotary_embedding_scaling=1.0,
+        use_cache=True,
+        vocab_size=65024,
+    )
+
     default_config["chatglm2_6b_32k"] = deepcopy(default_config["chatglm2_6b"])
     default_config["chatglm2_6b_32k"].rotary_embedding_scaling = 50.0
     default_config["chatglm3_6b_32k"] = default_config["chatglm2_6b_32k"]
@@ -209,7 +258,8 @@ class ChatGLMDecoderLayer(Module):
             self.position_embedding_type = PositionEmbeddingType.chatglm
         elif config.model_name in [
                 "chatglm2_6b", "chatglm2_6b_32k", "chatglm3_6b",
-                "chatglm3_6b_base", "chatglm3_6b_32k"
+                "chatglm3_6b_base", "chatglm3_6b_32k", "codegeex_32b",
+                "chatglm3_130b"
         ]:
             self.apply_residual_connection_post_layernorm = config.apply_residual_connection_post_layernorm
             self.norm = RmsNorm if config.rmsnorm else LayerNorm
@@ -321,6 +371,8 @@ class ChatGLMDecoderLayer(Module):
                 "glm_2b",
                 "glm_10b",
                 "glm_10b_chinese",
+                "codegeex_32b",
+                "chatglm3_130b",
         ]:
             residual = norm_output if self.apply_residual_connection_post_layernorm else hidden_states
 
@@ -358,6 +410,8 @@ class ChatGLMModel(Module):
                 "chatglm3_6b",
                 "chatglm3_6b_base",
                 "chatglm3_6b_32k",
+                "codegeex_32b",
+                "chatglm3_130b",
         ]:
             self.norm = RmsNorm
             self.hidden_size = config.hidden_size
